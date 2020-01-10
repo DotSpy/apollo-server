@@ -40,6 +40,7 @@ import { GraphQLDataSource } from './datasources/types';
 import { RemoteGraphQLDataSource } from './datasources/RemoteGraphQLDataSource';
 import { HeadersInit } from 'node-fetch';
 import { getVariableValues } from 'graphql/execution/values';
+import { Tracer } from '@opentelemetry/types';
 
 export type ServiceEndpointDefinition = Pick<ServiceDefinition, 'name' | 'url'>;
 
@@ -57,6 +58,7 @@ interface GatewayConfigBase {
   experimental_updateServiceDefinitions?: Experimental_UpdateServiceDefinitions;
   experimental_didUpdateComposition?: Experimental_DidUpdateCompositionCallback;
   experimental_pollInterval?: number;
+  tracer?: Tracer;
 }
 
 interface RemoteGatewayConfig extends GatewayConfigBase {

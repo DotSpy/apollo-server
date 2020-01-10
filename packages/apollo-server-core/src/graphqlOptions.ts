@@ -18,6 +18,7 @@ import {
   GraphQLResponse,
   GraphQLRequestContext,
 } from 'apollo-server-types';
+import { Tracer } from '@opentelemetry/types';
 
 /*
  * GraphQLServerOptions
@@ -61,6 +62,7 @@ export interface GraphQLServerOptions<
   documentStore?: InMemoryLRUCache<DocumentNode>;
   parseOptions?: GraphQLParseOptions;
   reporting?: boolean;
+  tracer?: Tracer;
 }
 
 export type DataSources<TContext> = {

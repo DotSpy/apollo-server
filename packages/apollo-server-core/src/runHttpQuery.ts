@@ -19,7 +19,9 @@ import {
 } from './requestPipeline';
 import { CacheControlExtensionOptions } from 'apollo-cache-control';
 import { ApolloServerPlugin } from 'apollo-server-plugin-base';
-import { WithRequired, GraphQLExecutionResult } from 'apollo-server-types';
+import { GraphQLExecutionResult, WithRequired } from 'apollo-server-types';
+import { Format } from '@opentelemetry/plugin-http';
+import { SpanKind, CanonicalCode } from '@opentelemetry/types';
 
 export interface HttpQueryRequest {
   method: string;
@@ -136,7 +138,19 @@ export async function runHttpQuery(
   if (options.debug === undefined) {
     options.debug = debugDefault;
   }
-
+  if (options.tracer) {
+    let tracer = options.tracer;
+    const externalSpan = request.request.headers
+      ? tracer.getHttpTextFormat().extract(Format.HTTP, request.request.headers)
+      : undefined;
+    tracer.startSpan('graphql-request', {
+      parent: externalSpan,
+      kind: SpanKind.SERVER,
+      attributes: {
+        query: request.query,
+      },
+    });
+  }
   // FIXME: Errors thrown while resolving the context in
   // ApolloServer#graphQLServerOptions are currently converted to
   // a throwing function, which we invoke here to rethrow an HTTP error.
@@ -196,7 +210,27 @@ export async function runHttpQuery(
     reporting: options.reporting,
   };
 
-  return processHTTPRequest(config, request);
+  return processHTTPRequest(config, request).then(
+    () => {
+      if (options.tracer) {
+        let currentSpan = options.tracer.getCurrentSpan();
+        if (currentSpan) {
+          currentSpan.end();
+        }
+      }
+    },
+    error => {
+      if (options.tracer) {
+        let currentSpan = options.tracer.getCurrentSpan();
+        if (currentSpan) {
+          //TODO depends on error coded we can set span status
+          currentSpan.setStatus({ code: CanonicalCode.UNKNOWN });
+          currentSpan.end();
+        }
+      }
+      return error
+    },
+  );
 }
 
 export async function processHTTPRequest<TContext>(
